@@ -8,7 +8,7 @@ Follow these steps to compile and run the C++ program:
 3. Compile the C++ file using the following command:
 
    ```bash
-   g++ your-file-name.cpp -o output
+   g++ vampiri2_v3.cpp -o output
    
 4. Run the compiled program using the following command:
 
