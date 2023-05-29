@@ -4,62 +4,12 @@
 #include <random>
 #include <assert.h>
 using namespace std;
-
 class KoordinateMatrice
 {
 public:
     int row;
     int col;
 };
-ostream &operator<<(std::ostream &os, const KoordinateMatrice &koordinate)
-{
-    os << "[" << koordinate.row << "] [" << koordinate.col << "]";
-    return os;
-}
-int getMaxRowSize(int **arr, int rows)
-{
-    int maxRowSize = 0;
-    for (int i = 0; i < rows; i++)
-    {
-        int currentRowSize = 0;
-        int *currentRow = arr[i];
-        while (*currentRow != 0)
-        { // Assuming 0 is the sentinel value to mark the end of each row
-            currentRowSize++;
-            currentRow++;
-        }
-        if (currentRowSize > maxRowSize)
-        {
-            maxRowSize = currentRowSize;
-        }
-    }
-    return maxRowSize;
-}
-int getMaxColSize(int **arr, int rows, int cols)
-{
-    int maxColSize = 0;
-    for (int j = 0; j < cols; j++)
-    {
-        int currentColSize = 0;
-        for (int i = 0; i < rows; i++)
-        {
-            if (arr[i][j] != 0)
-            { // Assuming 0 is the sentinel value to mark the end of each column
-                currentColSize++;
-            }
-            else
-            {
-                break;
-            }
-        }
-        if (currentColSize > maxColSize)
-        {
-            maxColSize = currentColSize;
-        }
-    }
-    return maxColSize;
-}
-
 void unos(int **niz, int redova, int kolona)
 {
     for (int i = 0; i < redova; i++)
@@ -75,8 +25,6 @@ void alokacija(int **&niz, int &redova, int &kolona)
 {
     cout << "Unesite dimenzije matrice: ";
     cin >> redova >> kolona;
-    // redova = 5;
-    // kolona = 6;
     niz = new int *[redova];
     assert(niz != nullptr);
     for (int i = 0; i < redova; i++)
@@ -173,10 +121,6 @@ void trazenjeINapadanjeZrtava(int **niz, int redova, int kolona, int maxRowSize,
             temp.col = xj;
             moguceZrtve.push_back(temp);
         }
-        // for (int i = 0; i < moguceZrtve.size(); i++)
-        //{
-        //     cout << moguceZrtve[i] << endl;
-        // }
         uniform_int_distribution<int> distribution(0, moguceZrtve.size() - 1);
         int randomNumber = distribution(generator);
         if (!moguceZrtve.empty())
@@ -190,7 +134,6 @@ void trazenjeINapadanjeZrtava(int **niz, int redova, int kolona, int maxRowSize,
         }
     }
 }
-
 int main()
 {
     vector<KoordinateMatrice> sviVampiri;
@@ -198,19 +141,12 @@ int main()
     int **niz = nullptr;
     int redova = 0, kolona = 0;
     int count = 0;
-
     alokacija(niz, redova, kolona);
     unos(niz, redova, kolona);
-    int maxRowSize = getMaxRowSize(niz, redova);
-    cout << maxRowSize << endl;
-    int maxColSize = getMaxColSize(niz, redova, kolona);
-    cout << maxColSize << endl;
     int x = redova;
     int y = kolona;
-
     do
     {
-
         trenutniVampiri(niz, redova, kolona, sviVampiri);
         for (int i = 0; i < sviVampiri.size(); i++)
         {
