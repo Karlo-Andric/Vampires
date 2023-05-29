@@ -12,4 +12,6 @@ Follow these steps to compile and run the C++ program:
    
 4. Run the compiled program using the following command:
 
-  ./output
+   ```bash
+   ./output
+
