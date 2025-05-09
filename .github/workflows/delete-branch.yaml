@@ -13,6 +13,7 @@ jobs:
       - name: Delete branch
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.PAT_TOKEN_VAMP }}
           script: |
             const branch = context.payload.pull_request.head.ref;
             const owner = context.repo.owner;
