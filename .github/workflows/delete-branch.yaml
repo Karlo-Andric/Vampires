@@ -7,7 +7,7 @@ on:
 
 jobs:
   delete-branch:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Delete branch
@@ -16,6 +16,13 @@ jobs:
           github-token: ${{ secrets.PAT_TOKEN_VAMP }}
           script: |
             const branch = context.payload.pull_request.head.ref;
+            const protectedBranches = ['main', 'staging', 'prod'];
+
+            if (protectedBranches.includes(branch)) {
+              console.log(`Skipping deletion of protected branch: ${branch}`);
+              return;
+            }
+
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             await github.rest.git.deleteRef({
