@@ -10,35 +10,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out the repo
-      uses: actions/checkout@v4
-
-    - name: Generate changelog
-      id: changelog
-      run: |
-        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-        
-        if [ -z "$PREVIOUS_TAG" ]; then
-          CHANGELOG=$(git log --no-merges --pretty=format:"- %s")
-        else
-          CHANGELOG=$(git log --no-merges --pretty=format:"- %s" $PREVIOUS_TAG..HEAD)
-        fi
-
-        if [ -z "$CHANGELOG" ]; then
-          CHANGELOG="- No changes detected"
-        fi
-
-        echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-        echo "$CHANGELOG" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
-
-    - name: Send changelog to Discord
+    - name: Format and send changelog to Discord
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        CHANGELOG: ${{ env.CHANGELOG }}
-        RELEASE_TAG: ${{ github.event.release.tag_name }}
       run: |
+        PAYLOAD='${{ toJson(github.event.release) }}'
+        CHANGELOG=$(echo "$PAYLOAD" | jq -r '.body')
+        VERSION=$(echo "$PAYLOAD" | jq -r '.tag_name')
+        URL=$(echo "$PAYLOAD" | jq -r '.html_url')
+        NAME=$(echo "$PAYLOAD" | jq -r '.name')
+
+        ESCAPED_CHANGELOG=$(echo "$CHANGELOG" | sed ':a;N;$!ba;s/\r//g' | sed 's/"/\\"/g')
+
         curl -H "Content-Type: application/json" \
           -X POST \
-          -d "{\"username\": \"Release Bot\", \"embeds\": [{\"title\": \"🚀 New Release: $RELEASE_TAG\", \"description\": \"$CHANGELOG\"}]}" \
+          -d "{
+            \"embeds\": [{
+              \"title\": \"🚀 New Release: $NAME\",
+              \"description\": \"$ESCAPED_CHANGELOG\",
+              \"url\": \"$URL\",
+              \"color\": 5814783
+            }]
+          }" \
           $DISCORD_WEBHOOK
