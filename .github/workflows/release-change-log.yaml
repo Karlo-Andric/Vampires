@@ -36,7 +36,7 @@ jobs:
             \"embeds\": [{
             \"title\": \"🚀 New Release: $NAME\",
             \"url\": \"$URL\",
-            \"description\": \"📝$ESCAPED_WHATS_CHANGED 📦 [Full Changelog]($FULL_CHANGELOG_URL)\",
+            \"description\": \"```📝$ESCAPED_WHATS_CHANGED 📦 [Full Changelog]($FULL_CHANGELOG_URL)```\",
             \"color\": 3447003
             }]
         }" \
