@@ -14,52 +14,31 @@ jobs:
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
       run: |
-        PAYLOAD='${{ toJson(github.event.release) }}'
-
-        BODY=$(echo "$PAYLOAD" | jq -r '.body')
-        TAG_NAME=$(echo "$PAYLOAD" | jq -r '.tag_name')
-        NAME=$(echo "$PAYLOAD" | jq -r '.name')
-        URL=$(echo "$PAYLOAD" | jq -r '.html_url')
-
-        echo "---- BODY ----"
-        echo "$BODY"
-        echo "---- TAG_NAME ----"
-        echo "$TAG_NAME"
-        echo "---- NAME ----"
-        echo "$NAME"
-        echo "---- URL ----"
-        echo "$URL"
-
-        WHATS_CHANGED=$(echo "$BODY" | awk '/## [Ww]hat.?s [Cc]hanged/{flag=1; next} /^## /{flag=0} flag')
-        WHATS_CHANGED="${WHATS_CHANGED:-No changes listed.}"
+        BODY='${{ github.event.release.body }}'
+        TAG_NAME='${{ github.event.release.tag_name }}'
+        NAME='${{ github.event.release.name }}'
+        URL='${{ github.event.release.html_url }}'
+        
+        WHATS_CHANGED=$(echo "$BODY" | awk '/## [Ww]hat.?s [Cc]hanged/{flag=1; next} /^## /{flag=0} flag' | sed 's/\\r//g')
+        
+        if [ -z "$WHATS_CHANGED" ]; then
+          WHATS_CHANGED="No changes listed."
+        fi
+        
         FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
-
-        echo "---- WHATS_CHANGED ----"
-        echo "$WHATS_CHANGED"
-        echo "---- FULL_CHANGELOG_URL ----"
-        echo "$FULL_CHANGELOG_URL"
-
-        DESCRIPTION=$(printf "📝 **What's Changed:**\n%s\n\n📦 [Full Changelog](%s)" "$WHATS_CHANGED" "$FULL_CHANGELOG_URL")
-
-        echo "---- DESCRIPTION (raw) ----"
-        printf "%s\n" "$DESCRIPTION"
-
-        jq -n --arg title "🚀 New Release: $NAME" \
-              --arg url "$URL" \
-              --arg description "$DESCRIPTION" \
-              --argjson color 3447003 \
-              '{
-                embeds: [
-                  {
-                    title: $title,
-                    url: $url,
-                    description: $description,
-                    color: $color
-                  }
-                ]
-              }' > payload.json
-
-        echo "---- FINAL payload.json ----"
-        cat payload.json
-
-        curl -H "Content-Type: application/json" -X POST -d @payload.json "$DISCORD_WEBHOOK"
+        
+        ESCAPED_WHATS_CHANGED=$(echo "$WHATS_CHANGED" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/\r//g' | sed 's/\n/\\n/g')
+        
+        DISCORD_PAYLOAD=$(cat <<EOF
+        {
+          "embeds": [{
+            "title": "🚀 New Release: $NAME",
+            "url": "$URL",
+            "description": "📝 **What's Changed:**\n$ESCAPED_WHATS_CHANGED\n\n📦 [Full Changelog]($FULL_CHANGELOG_URL)",
+            "color": 3447003
+          }]
+        }
+        EOF
+        )
+        
+        curl -H "Content-Type: application/json" -X POST -d "$DISCORD_PAYLOAD" "$DISCORD_WEBHOOK"
