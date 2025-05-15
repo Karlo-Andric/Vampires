@@ -15,21 +15,29 @@ jobs:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
       run: |
         PAYLOAD='${{ toJson(github.event.release) }}'
-        CHANGELOG=$(echo "$PAYLOAD" | jq -r '.body')
-        VERSION=$(echo "$PAYLOAD" | jq -r '.tag_name')
-        URL=$(echo "$PAYLOAD" | jq -r '.html_url')
-        NAME=$(echo "$PAYLOAD" | jq -r '.name')
 
-        ESCAPED_CHANGELOG=$(echo "$CHANGELOG" | sed ':a;N;$!ba;s/\r//g' | sed 's/"/\\"/g')
+        BODY=$(echo "$PAYLOAD" | jq -r '.body')
+        TAG_NAME=$(echo "$PAYLOAD" | jq -r '.tag_name')
+        NAME=$(echo "$PAYLOAD" | jq -r '.name')
+        URL=$(echo "$PAYLOAD" | jq -r '.html_url')
+
+        WHATS_CHANGED=$(echo "$BODY" | awk '/[Ww]hat.s [Cc]hanged/,/^## /' | sed '$d')
+        if [ -z "$WHATS_CHANGED" ]; then
+        WHATS_CHANGED=$(echo "$BODY" | awk '/[Ww]hat.s [Cc]hanged/ {flag=1; next} flag')
+        fi
+
+        ESCAPED_WHATS_CHANGED=$(echo "$WHATS_CHANGED" | sed ':a;N;$!ba;s/\r//g' | sed 's/"/\\"/g')
+
+        FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
 
         curl -H "Content-Type: application/json" \
-          -X POST \
-          -d "{
+        -X POST \
+        -d "{
             \"embeds\": [{
-              \"title\": \"🚀 New Release: $NAME\",
-              \"description\": \"$ESCAPED_CHANGELOG\",
-              \"url\": \"$URL\",
-              \"color\": 5814783
+            \"title\": \"🚀 New Release: $NAME\",
+            \"url\": \"$URL\",
+            \"description\": \"📝 **What's Changed:**\n$ESCAPED_WHATS_CHANGED\n\n📦 [Full Changelog]($FULL_CHANGELOG_URL)\",
+            \"color\": 3447003
             }]
-          }" \
-          $DISCORD_WEBHOOK
+        }" \
+        $DISCORD_WEBHOOK
