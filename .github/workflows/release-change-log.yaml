@@ -14,31 +14,71 @@ jobs:
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
       run: |
-        BODY='${{ github.event.release.body }}'
+        echo "=== Starting Discord notification process ==="
+        
+        # Debug: Print event structure (redacting sensitive info)
+        echo "=== Release Event Summary ==="
+        echo "Release Name: ${{ github.event.release.name }}"
+        echo "Tag: ${{ github.event.release.tag_name }}"
+        echo "URL: ${{ github.event.release.html_url }}"
+        echo "Target Branch: ${{ github.event.release.target_commitish }}"
+        
+        # Fix line endings in the body content
+        # The 'rn' in the logs suggests Windows-style line endings that need normalization
+        RAW_BODY='${{ github.event.release.body }}'
+        BODY=$(echo "$RAW_BODY" | sed 's/rn/\n/g' | sed 's/\\r\\n/\n/g' | sed 's/\\n/\n/g')
+        
+        # Debug: Print fixed body content
+        echo "=== Release Body After Line Ending Fix ==="
+        echo "$BODY"
+        echo "==================================="
+        
+        # Extract other release details
         TAG_NAME='${{ github.event.release.tag_name }}'
         NAME='${{ github.event.release.name }}'
         URL='${{ github.event.release.html_url }}'
         
-        WHATS_CHANGED=$(echo "$BODY" | awk '/## [Ww]hat.?s [Cc]hanged/{flag=1; next} /^## /{flag=0} flag' | sed 's/\\r//g')
+        # Extract "What's Changed" section using grep and awk
+        echo "=== Extracting What's Changed section ==="
+        WHATS_CHANGED=$(echo "$BODY" | awk '/## [Ww]hat.?s [Cc]hanged/{flag=1; next} /^## /{flag=0} flag')
         
+        # Debug: Print what was found
+        echo "Found What's Changed content:"
+        echo "$WHATS_CHANGED"
+        
+        # If no changes found, provide a default message
         if [ -z "$WHATS_CHANGED" ]; then
+          echo "No 'What's Changed' section found, using default message"
           WHATS_CHANGED="No changes listed."
         fi
         
+        # Get full changelog URL or use release URL as fallback
         FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
+        echo "Using changelog URL: $FULL_CHANGELOG_URL"
         
-        ESCAPED_WHATS_CHANGED=$(echo "$WHATS_CHANGED" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/\r//g' | sed 's/\n/\\n/g')
+        # Prepare content for JSON - use printf for better control of escaping
+        echo "=== Creating Discord payload ==="
         
-        DISCORD_PAYLOAD=$(cat <<EOF
-        {
-          "embeds": [{
-            "title": "🚀 New Release: $NAME",
-            "url": "$URL",
-            "description": "📝 **What's Changed:**\n$ESCAPED_WHATS_CHANGED\n\n📦 [Full Changelog]($FULL_CHANGELOG_URL)",
-            "color": 3447003
-          }]
-        }
-        EOF
-        )
+        # Create JSON with jq for reliable escaping
+        DISCORD_PAYLOAD=$(jq -n \
+          --arg title "🚀 New Release: $NAME" \
+          --arg url "$URL" \
+          --arg desc "📝 **What's Changed:**\n$WHATS_CHANGED\n\n📦 [Full Changelog]($FULL_CHANGELOG_URL)" \
+          '{
+            "embeds": [{
+              "title": $title,
+              "url": $url,
+              "description": $desc,
+              "color": 3447003
+            }]
+          }')
         
-        curl -H "Content-Type: application/json" -X POST -d "$DISCORD_PAYLOAD" "$DISCORD_WEBHOOK"
+        # Debug: Print the final payload (truncated for safety)
+        echo "Generated Discord payload (first 100 chars):"
+        echo "${DISCORD_PAYLOAD:0:100}..."
+        
+        # Send to Discord
+        echo "=== Sending to Discord ==="
+        curl -v -H "Content-Type: application/json" -X POST -d "$DISCORD_PAYLOAD" "$DISCORD_WEBHOOK"
+        
+        echo "=== Discord notification process complete ==="
