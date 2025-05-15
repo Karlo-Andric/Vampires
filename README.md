@@ -17,4 +17,3 @@ Follow these steps to compile and run the C++ program:
 
 bump 2
 aaa
-aa
