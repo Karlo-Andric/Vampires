@@ -21,23 +21,18 @@ jobs:
         NAME=$(echo "$PAYLOAD" | jq -r '.name')
         URL=$(echo "$PAYLOAD" | jq -r '.html_url')
 
-        WHATS_CHANGED=$(echo "$BODY" | awk '/[Ww]hat.s [Cc]hanged/,/^## /' | sed '$d')
-        if [ -z "$WHATS_CHANGED" ]; then
-        WHATS_CHANGED=$(echo "$BODY" | awk '/[Ww]hat.s [Cc]hanged/ {flag=1; next} flag')
-        fi
-
-        ESCAPED_WHATS_CHANGED=$(echo "$WHATS_CHANGED" | sed ':a;N;$!ba;s/\r//g' | sed 's/"/\\"/g')
+        WHATS_CHANGED=$(echo "$BODY" | awk '/## [Ww]hat.s [Cc]hanged/{flag=1; next} /^## /{flag=0} flag')
+        
+        ESCAPED_WHATS_CHANGED=$(echo "$WHATS_CHANGED" | sed 's/\r//g' | sed 's/"/\\"/g')
 
         FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
 
-        curl -H "Content-Type: application/json" \
-        -X POST \
-        -d "{
-            \"embeds\": [{
-            \"title\": \"🚀 New Release: $NAME\",
-            \"url\": \"$URL\",
-            \"description\": \"📝 **What's Changed:**\n$ESCAPED_WHATS_CHANGED\n\n📦 [Full Changelog]($FULL_CHANGELOG_URL)\",
-            \"color\": 3447003
-            }]
-        }" \
-        $DISCORD_WEBHOOK
+        printf '{
+          "embeds": [{
+            "title": "🚀 New Release: %s",
+            "url": "%s",
+            "description": "📝 **What'\''s Changed:**\n%s\n\n📦 [Full Changelog](%s)",
+            "color": 3447003
+          }]
+        }' "$NAME" "$URL" "$ESCAPED_WHATS_CHANGED" "$FULL_CHANGELOG_URL" | \
+        curl -H "Content-Type: application/json" -X POST -d @- "$DISCORD_WEBHOOK"
