@@ -10,23 +10,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Format and send changelog to Discord
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: |
-          CHANGELOG=$(jq -r '.body' <<< "${{ toJson(github.event.release) }}")
-          VERSION=$(jq -r '.tag_name' <<< "${{ toJson(github.event.release) }}")
-          URL=$(jq -r '.html_url' <<< "${{ toJson(github.event.release) }}")
-          NAME=$(jq -r '.name' <<< "${{ toJson(github.event.release) }}")
+    - name: Format and send changelog to Discord
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      run: |
+        PAYLOAD='${{ toJson(github.event.release) }}'
+        CHANGELOG=$(echo "$PAYLOAD" | jq -r '.body')
+        VERSION=$(echo "$PAYLOAD" | jq -r '.tag_name')
+        URL=$(echo "$PAYLOAD" | jq -r '.html_url')
+        NAME=$(echo "$PAYLOAD" | jq -r '.name')
 
-          curl -H "Content-Type: application/json" \
-            -X POST \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"🚀 New Release: $NAME\",
-                \"description\": \"$CHANGELOG\",
-                \"url\": \"$URL\",
-                \"color\": 5814783
-              }]
-            }" \
-            $DISCORD_WEBHOOK
+        ESCAPED_CHANGELOG=$(echo "$CHANGELOG" | sed ':a;N;$!ba;s/\r//g' | sed 's/"/\\"/g')
+
+        curl -H "Content-Type: application/json" \
+          -X POST \
+          -d "{
+            \"embeds\": [{
+              \"title\": \"🚀 New Release: $NAME\",
+              \"description\": \"$ESCAPED_CHANGELOG\",
+              \"url\": \"$URL\",
+              \"color\": 5814783
+            }]
+          }" \
+          $DISCORD_WEBHOOK
