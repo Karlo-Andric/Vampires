@@ -10,18 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-name: Release Changelog to Discord
-
-on:
-  release:
-    types: [published]
-
-jobs:
-  notify-discord:
-    if: github.event.release.target_commitish == 'main'
-    runs-on: ubuntu-latest
-
-    steps:
     - name: Format and send changelog to Discord
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
