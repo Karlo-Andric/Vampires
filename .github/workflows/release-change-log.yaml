@@ -22,18 +22,23 @@ jobs:
         URL=$(echo "$PAYLOAD" | jq -r '.html_url')
 
         WHATS_CHANGED=$(echo "$BODY" | awk '/## [Ww]hat.s [Cc]hanged/{flag=1; next} /^## /{flag=0} flag')
-
         FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
 
-        SAFE_DESCRIPTION=$(printf "📝 **What's Changed:**\n%s\n\n📦 [Full Changelog](%s)" "$WHATS_CHANGED" "$FULL_CHANGELOG_URL" | jq -Rs .)
+        DESCRIPTION=$(printf "📝 **What's Changed:**\n%s\n\n📦 [Full Changelog](%s)" "$WHATS_CHANGED" "$FULL_CHANGELOG_URL")
 
-        JSON='{
-          "embeds": [{
-            "title": "🚀 New Release: '"$NAME"'",
-            "url": "'"$URL"'",
-            "description": '"$SAFE_DESCRIPTION"',
-            "color": 3447003
-          }]
-        }'
+        jq -n --arg title "🚀 New Release: $NAME" \
+                --arg url "$URL" \
+                --arg description "$DESCRIPTION" \
+                --argjson color 3447003 \
+                '{
+                embeds: [
+                    {
+                    title: $title,
+                    url: $url,
+                    description: $description,
+                    color: $color
+                    }
+                ]
+                }' > payload.json
 
-        curl -H "Content-Type: application/json" -X POST -d "$JSON" "$DISCORD_WEBHOOK"
+        curl -H "Content-Type: application/json" -X POST -d @payload.json "$DISCORD_WEBHOOK"
