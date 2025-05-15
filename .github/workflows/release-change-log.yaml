@@ -10,6 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+name: Release Changelog to Discord
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify-discord:
+    if: github.event.release.target_commitish == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
     - name: Format and send changelog to Discord
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -22,21 +34,22 @@ jobs:
         URL=$(echo "$PAYLOAD" | jq -r '.html_url')
 
         WHATS_CHANGED=$(echo "$BODY" | awk '/## [Ww]hat.s [Cc]hanged/{flag=1; next} /^## /{flag=0} flag')
-        
-        ESCAPED_WHATS_CHANGED=$(echo "$WHATS_CHANGED" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
 
         FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
 
+        # Escape for JSON safely
+        SAFE_DESCRIPTION=$(printf "📝 **What's Changed:**\n%s\n\n📦 [Full Changelog](%s)" "$WHATS_CHANGED" "$FULL_CHANGELOG_URL" | jq -Rs .)
+
         JSON=$(cat <<EOF
-        {
-        "embeds": [{
-            "title": "🚀 New Release: $NAME",
-            "url": "$URL",
-            "description": "📝 **What's Changed:**\n$ESCAPED_WHATS_CHANGED\n\n📦 [Full Changelog]($FULL_CHANGELOG_URL)",
-            "color": 3447003
-        }]
-        }
-        EOF
-        )
+{
+  "embeds": [{
+    "title": "🚀 New Release: $NAME",
+    "url": "$URL",
+    "description": $SAFE_DESCRIPTION,
+    "color": 3447003
+  }]
+}
+EOF
+)
 
         curl -H "Content-Type: application/json" -X POST -d "$JSON" "$DISCORD_WEBHOOK"
