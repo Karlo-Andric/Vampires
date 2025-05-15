@@ -16,14 +16,22 @@ jobs:
         run: |
           PAYLOAD='${{ toJson(github.event.release) }}'
 
+          echo "---- RAW PAYLOAD ----"
           echo "$PAYLOAD" > payload_raw.json
+          cat payload_raw.json
 
-          BODY=$(jq -r '.body' <<< "$PAYLOAD")
+          # Normalize body line endings
+          BODY=$(jq -r '.body' <<< "$PAYLOAD" | tr -d '\r')
           TAG_NAME=$(jq -r '.tag_name' <<< "$PAYLOAD")
           NAME=$(jq -r '.name' <<< "$PAYLOAD")
           URL=$(jq -r '.html_url' <<< "$PAYLOAD")
 
+          echo "---- NORMALIZED BODY ----"
+          echo "$BODY"
+
           WHATS_CHANGED=$(echo "$BODY" | awk '/## [Ww]hat.s [Cc]hanged/{flag=1; next} /^## /{flag=0} flag')
+          WHATS_CHANGED="${WHATS_CHANGED:-No changes listed.}"  # fallback
+
           FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
 
           DESCRIPTION="📝 **What's Changed:**\n$WHATS_CHANGED\n\n📦 [Full Changelog]($FULL_CHANGELOG_URL)"
@@ -42,7 +50,7 @@ jobs:
               }]
             }' > payload.json
 
-          echo "Payload JSON for Discord:"
+          echo "---- FINAL DISCORD PAYLOAD ----"
           cat payload.json
 
           curl -H "Content-Type: application/json" \
