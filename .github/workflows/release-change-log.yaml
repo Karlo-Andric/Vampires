@@ -1,0 +1,32 @@
+name: Release Changelog to Discord
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify-discord:
+    if: github.event.release.target_commitish == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Format and send changelog to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          CHANGELOG=$(jq -r '.body' <<< "${{ toJson(github.event.release) }}")
+          VERSION=$(jq -r '.tag_name' <<< "${{ toJson(github.event.release) }}")
+          URL=$(jq -r '.html_url' <<< "${{ toJson(github.event.release) }}")
+          NAME=$(jq -r '.name' <<< "${{ toJson(github.event.release) }}")
+
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🚀 New Release: $NAME\",
+                \"description\": \"$CHANGELOG\",
+                \"url\": \"$URL\",
+                \"color\": 5814783
+              }]
+            }" \
+            $DISCORD_WEBHOOK
