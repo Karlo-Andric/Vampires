@@ -30,23 +30,28 @@ jobs:
             /^## / && flag { exit }
             flag { print }
           ' <<< "$BODY")
-          
+
           WHATS_CHANGED="${WHATS_CHANGED:-No changes listed.}"
           FULL_CHANGELOG_URL=$(grep -o 'https://github.com[^ ]*commits[^ ]*' <<< "$BODY" || echo "$URL")
 
-          # Escape for JSON, keep newlines intact
-          DESCRIPTION=$(jq -Rs <<< "📝 **What's Changed:**\n$WHATS_CHANGED\n\n📦 [Full Changelog]($FULL_CHANGELOG_URL)")
+          # Write DESCRIPTION into temp file safely (preserve literal newlines)
+          {
+            echo "📝 **What's Changed:**"
+            echo "$WHATS_CHANGED"
+            echo ""
+            echo "📦 [Full Changelog]($FULL_CHANGELOG_URL)"
+          } > description.txt
 
           jq -n \
             --arg title "🚀 New Release: $NAME" \
             --arg url "$URL" \
-            --arg description "$DESCRIPTION" \
+            --slurpfile description description.txt \
             --argjson color 3447003 \
             '{
               embeds: [{
                 title: $title,
                 url: $url,
-                description: $description,
+                description: $description[0],
                 color: $color
               }]
             }' > payload.json
