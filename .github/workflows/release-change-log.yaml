@@ -37,19 +37,15 @@ jobs:
 
         FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
 
-        # Escape for JSON safely
         SAFE_DESCRIPTION=$(printf "📝 **What's Changed:**\n%s\n\n📦 [Full Changelog](%s)" "$WHATS_CHANGED" "$FULL_CHANGELOG_URL" | jq -Rs .)
 
-        JSON=$(cat <<EOF
-{
-  "embeds": [{
-    "title": "🚀 New Release: $NAME",
-    "url": "$URL",
-    "description": $SAFE_DESCRIPTION,
-    "color": 3447003
-  }]
-}
-EOF
-)
+        JSON='{
+          "embeds": [{
+            "title": "🚀 New Release: '"$NAME"'",
+            "url": "'"$URL"'",
+            "description": '"$SAFE_DESCRIPTION"',
+            "color": 3447003
+          }]
+        }'
 
         curl -H "Content-Type: application/json" -X POST -d "$JSON" "$DISCORD_WEBHOOK"
