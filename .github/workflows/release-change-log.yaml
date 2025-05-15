@@ -14,27 +14,28 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          PAYLOAD='${{ toJson(github.event.release) }}'
+          echo '${{ toJson(github.event.release) }}' > payload_raw.json
 
-          echo "---- RAW PAYLOAD ----"
-          echo "$PAYLOAD" > payload_raw.json
-          cat payload_raw.json
-
-          # Normalize body line endings
-          BODY=$(jq -r '.body' <<< "$PAYLOAD" | tr -d '\r')
-          TAG_NAME=$(jq -r '.tag_name' <<< "$PAYLOAD")
-          NAME=$(jq -r '.name' <<< "$PAYLOAD")
-          URL=$(jq -r '.html_url' <<< "$PAYLOAD")
+          BODY=$(jq -r '.body' payload_raw.json | tr -d '\r')
+          TAG_NAME=$(jq -r '.tag_name' payload_raw.json)
+          NAME=$(jq -r '.name' payload_raw.json)
+          URL=$(jq -r '.html_url' payload_raw.json)
 
           echo "---- NORMALIZED BODY ----"
           echo "$BODY"
 
-          WHATS_CHANGED=$(echo "$BODY" | awk '/## [Ww]hat.s [Cc]hanged/{flag=1; next} /^## /{flag=0} flag')
-          WHATS_CHANGED="${WHATS_CHANGED:-No changes listed.}"  # fallback
+          WHATS_CHANGED=$(awk '
+            BEGIN { flag=0 }
+            /^## [Ww]hat.?s [Cc]hanged/ { flag=1; next }
+            /^## / && flag { exit }
+            flag { print }
+          ' <<< "$BODY")
+          
+          WHATS_CHANGED="${WHATS_CHANGED:-No changes listed.}"
+          FULL_CHANGELOG_URL=$(grep -o 'https://github.com[^ ]*commits[^ ]*' <<< "$BODY" || echo "$URL")
 
-          FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
-
-          DESCRIPTION="📝 **What's Changed:**\n$WHATS_CHANGED\n\n📦 [Full Changelog]($FULL_CHANGELOG_URL)"
+          # Escape for JSON, keep newlines intact
+          DESCRIPTION=$(jq -Rs <<< "📝 **What's Changed:**\n$WHATS_CHANGED\n\n📦 [Full Changelog]($FULL_CHANGELOG_URL)")
 
           jq -n \
             --arg title "🚀 New Release: $NAME" \
