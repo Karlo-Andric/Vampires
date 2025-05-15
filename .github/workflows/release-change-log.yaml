@@ -10,35 +10,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Format and send changelog to Discord
-      env:
-        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      run: |
-        PAYLOAD='${{ toJson(github.event.release) }}'
+      - name: Format and send changelog to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          PAYLOAD='${{ toJson(github.event.release) }}'
 
-        BODY=$(echo "$PAYLOAD" | jq -r '.body')
-        TAG_NAME=$(echo "$PAYLOAD" | jq -r '.tag_name')
-        NAME=$(echo "$PAYLOAD" | jq -r '.name')
-        URL=$(echo "$PAYLOAD" | jq -r '.html_url')
+          echo "$PAYLOAD" > payload_raw.json
 
-        WHATS_CHANGED=$(echo "$BODY" | awk '/## [Ww]hat.s [Cc]hanged/{flag=1; next} /^## /{flag=0} flag')
-        FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
+          BODY=$(jq -r '.body' <<< "$PAYLOAD")
+          TAG_NAME=$(jq -r '.tag_name' <<< "$PAYLOAD")
+          NAME=$(jq -r '.name' <<< "$PAYLOAD")
+          URL=$(jq -r '.html_url' <<< "$PAYLOAD")
 
-        DESCRIPTION=$(printf "📝 **What's Changed:**\n%s\n\n📦 [Full Changelog](%s)" "$WHATS_CHANGED" "$FULL_CHANGELOG_URL")
+          WHATS_CHANGED=$(echo "$BODY" | awk '/## [Ww]hat.s [Cc]hanged/{flag=1; next} /^## /{flag=0} flag')
+          FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
 
-        jq -n --arg title "🚀 New Release: $NAME" \
-                --arg url "$URL" \
-                --arg description "$DESCRIPTION" \
-                --argjson color 3447003 \
-                '{
-                embeds: [
-                    {
-                    title: $title,
-                    url: $url,
-                    description: $description,
-                    color: $color
-                    }
-                ]
-                }' > payload.json
+          DESCRIPTION="📝 **What's Changed:**\n$WHATS_CHANGED\n\n📦 [Full Changelog]($FULL_CHANGELOG_URL)"
 
-        curl -H "Content-Type: application/json" -X POST -d @payload.json "$DISCORD_WEBHOOK"
+          jq -n \
+            --arg title "🚀 New Release: $NAME" \
+            --arg url "$URL" \
+            --arg description "$DESCRIPTION" \
+            --argjson color 3447003 \
+            '{
+              embeds: [{
+                title: $title,
+                url: $url,
+                description: $description,
+                color: $color
+              }]
+            }' > payload.json
+
+          echo "Payload JSON for Discord:"
+          cat payload.json
+
+          curl -H "Content-Type: application/json" \
+               -X POST -d @payload.json "$DISCORD_WEBHOOK"
