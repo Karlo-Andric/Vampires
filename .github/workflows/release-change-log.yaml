@@ -20,14 +20,14 @@ jobs:
         URL=$(echo "$PAYLOAD" | jq -r '.html_url')
         NAME=$(echo "$PAYLOAD" | jq -r '.name')
 
-        ESCAPED_CHANGELOG=$(echo "$CHANGELOG" | sed ':a;N;$!ba;s/\r//g' | sed 's/"/\\"/g')
+        ESCAPED_CHANGELOG=$(echo "$CHANGELOG" | jq -Rs .)
 
         curl -H "Content-Type: application/json" \
           -X POST \
           -d "{
             \"embeds\": [{
               \"title\": \"🚀 New Release: $NAME\",
-              \"description\": \"$ESCAPED_CHANGELOG\",
+              \"description\": $ESCAPED_CHANGELOG,
               \"url\": \"$URL\",
               \"color\": 5814783
             }]
