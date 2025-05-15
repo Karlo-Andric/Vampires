@@ -17,27 +17,21 @@ jobs:
         PAYLOAD='${{ toJson(github.event.release) }}'
 
         BODY=$(echo "$PAYLOAD" | jq -r '.body')
-        TAG_NAME=$(echo "$PAYLOAD" | jq -r '.tag_name')
         NAME=$(echo "$PAYLOAD" | jq -r '.name')
         URL=$(echo "$PAYLOAD" | jq -r '.html_url')
 
-        WHATS_CHANGED=$(echo "$BODY" | awk '/[Ww]hat.s [Cc]hanged/,/^## /' | sed '$d')
-        if [ -z "$WHATS_CHANGED" ]; then
-        WHATS_CHANGED=$(echo "$BODY" | awk '/[Ww]hat.s [Cc]hanged/ {flag=1; next} flag')
-        fi
-
-        ESCAPED_WHATS_CHANGED=$(echo "$WHATS_CHANGED" | sed ':a;N;$!ba;s/\r//g' | sed 's/"/\\"/g')
-
-        FULL_CHANGELOG_URL=$(echo "$BODY" | grep -o 'https://github.com[^ ]*commits[^ ]*' || echo "$URL")
+        # Escape backslashes, quotes, and wrap in triple backticks for code block
+        ESCAPED_BODY=$(printf '%s\n' "$BODY" | sed 's/\\/\\\\/g; s/"/\\"/g')
+        CODE_BLOCK="\\\`\\\`\\\`\\n$ESCAPED_BODY\\n\\\`\\\`\\\`"
 
         curl -H "Content-Type: application/json" \
-        -X POST \
-        -d "{
+          -X POST \
+          -d "{
             \"embeds\": [{
-            \"title\": \"🚀 New Release: $NAME\",
-            \"url\": \"$URL\",
-            \"description\": \"```📝$ESCAPED_WHATS_CHANGED 📦 [Full Changelog]($FULL_CHANGELOG_URL)```\",
-            \"color\": 3447003
+              \"title\": \"🚀 New Release: $NAME\",
+              \"url\": \"$URL\",
+              \"description\": \"$CODE_BLOCK\",
+              \"color\": 3447003
             }]
-        }" \
-        $DISCORD_WEBHOOK
+          }" \
+          "$DISCORD_WEBHOOK"
