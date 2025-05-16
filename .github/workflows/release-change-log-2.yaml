@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
     - name: Send release info to Discord
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
