@@ -10,32 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Send release title to Discord
+    - name: Send release info to Discord
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
       run: |
-        PAYLOAD='${{ toJson(github.event.release) }}'
-
-        BODY=$(echo "$PAYLOAD" | jq -r '.body')
-        TAG_NAME=$(echo "$PAYLOAD" | jq -r '.tag_name')
-        URL=$(echo "$PAYLOAD" | jq -r '.html_url')
-
-        jq -n --arg title "🚀 $TAG_NAME released!" \
-              --arg url "$URL" \
-              --argjson color 3447003 \
-              '{embeds: [{title: $title, url: $url, color: $color}]}' \
-          > embed.json
-
+        TAG_NAME="${{ github.event.release.tag_name }}"
+        URL="${{ github.event.release.html_url }}"
+        
         curl -H "Content-Type: application/json" \
              -X POST \
-             --data @embed.json \
+             -d "{\"embeds\": [{\"title\": \"🚀 $TAG_NAME released!\", \"url\": \"$URL\", \"color\": 3447003}]}" \
              "$DISCORD_WEBHOOK"
-
-        echo "$BODY" > body.txt
-
-        jq -n --rawfile content body.txt '{content: $content}' > body.json
-
+        
+        RELEASE_BODY=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                      "https://api.github.com/repos/${{ github.repository }}/releases/${{ github.event.release.id }}" | \
+                      jq -r '.body')
+        
+        ESCAPED_BODY=$(echo "$RELEASE_BODY" | jq -Rs .)
+        
         curl -H "Content-Type: application/json" \
              -X POST \
-             --data @body.json \
+             -d "{\"content\": $ESCAPED_BODY}" \
              "$DISCORD_WEBHOOK"
