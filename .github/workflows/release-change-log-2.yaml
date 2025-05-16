@@ -3,7 +3,14 @@ name: Release Changelog to Discord
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      changelog:
+        description: "Release notes"
+        required: false
 
+env:
+    CHANGELOG: ${{ github.event.inputs.changelog }}
 jobs:
   notify-discord:
     if: github.event.release.target_commitish == 'main-2'
@@ -24,3 +31,16 @@ jobs:
         if [ -z "$CHANGELOG" ]; then
           CHANGELOG="- No changes detected"
         fi
+
+        {
+          echo "CHANGELOG<<EOF"
+          echo "$CHANGELOG"
+          echo "EOF"
+        } >> $GITHUB_ENV
+
+    - name: Discord Commits
+      uses: Ilshidur/action-discord@0.3.2
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      with:
+        args: "deployment done - Check it out: ${{ env.CHANGELOG != '' && format('Release notes: ```\n{0}```', env.CHANGELOG) || '' }}"
