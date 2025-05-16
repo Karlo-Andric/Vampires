@@ -23,3 +23,4 @@ jobs:
 
         if [ -z "$CHANGELOG" ]; then
           CHANGELOG="- No changes detected"
+        fi
