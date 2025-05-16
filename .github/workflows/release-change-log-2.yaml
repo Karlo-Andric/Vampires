@@ -25,8 +25,13 @@ jobs:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
       run: |
         PREVIOUS_TAG=$(git tag --sort=-creatordate | sed -n '2p')
+        echo $PREVIOUS_TAG
+
         CURRENT_TAG=${{ github.event.release.tag_name }}
+        echo $CURRENT_TAG
+
         CHANGELOG=$(git log --no-merges --pretty=format:"- %s" $PREVIOUS_TAG..$CURRENT_TAG)
+        echo $CHANGELOG
 
         if [ -z "$CHANGELOG" ]; then
           CHANGELOG="- No changes detected"
