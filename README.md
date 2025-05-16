@@ -16,3 +16,4 @@ Follow these steps to compile and run the C++ program:
    ./output
 
 bump 2
+bump 2-1
