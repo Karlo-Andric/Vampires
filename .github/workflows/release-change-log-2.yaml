@@ -19,7 +19,7 @@ jobs:
       run: |
         PREVIOUS_TAG=$(git tag --sort=-creatordate | sed -n '2p')
         CURRENT_TAG=${{ github.event.release.tag_name }}
-        CHANGELOG=$(git log --no-merges --pretty=format:"- %s" $PREVIOUS_TAG..CURRENT_TAG)
+        CHANGELOG=$(git log --no-merges --pretty=format:"- %s" $PREVIOUS_TAG..$CURRENT_TAG)
 
         if [ -z "$CHANGELOG" ]; then
           CHANGELOG="- No changes detected"
