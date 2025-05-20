@@ -13,7 +13,6 @@ env:
     CHANGELOG: ${{ github.event.inputs.changelog }}
 jobs:
   notify-discord:
-    if: github.event.release.target_commitish == 'basi-cms'
     runs-on: ubuntu-latest
 
     steps:
