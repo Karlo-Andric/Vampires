@@ -30,7 +30,7 @@ jobs:
 
         CURRENT_TAG=${{ github.event.release.tag_name }}
 
-        CHANGELOG=$(git log --no-merges --pretty=format:"- %s" $PREVIOUS_TAG..$CURRENT_TAG)
+        CHANGELOG=$(git log --no-merges --pretty=format:"- %s" v0.0.1..v0.0.9)
 
         if [ -z "$CHANGELOG" ]; then
           CHANGELOG="- No changes detected"
