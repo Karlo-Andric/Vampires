@@ -1,0 +1,66 @@
+name: Release CMS to Discord
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      changelog:
+        description: "Release notes"
+        required: false
+
+env:
+    CHANGELOG: ${{ github.event.inputs.changelog }}
+jobs:
+  notify-discord:
+    if: github.event.release.target_commitish == 'main-basi'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+
+    - name: Send release info to Discord
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      run: |
+        PREVIOUS_TAG=$(git tag --sort=-creatordate | sed -n '2p')
+
+        CURRENT_TAG=${{ github.event.release.tag_name }}
+
+        CHANGELOG=$(git log --no-merges --pretty=format:"- %s" $PREVIOUS_TAG..$CURRENT_TAG)
+
+        if [ -z "$CHANGELOG" ]; then
+          CHANGELOG="- No changes detected"
+        fi
+
+        MAX_LENGTH=1600
+        if [ ${#CHANGELOG} -gt $MAX_LENGTH ]; then
+          CHANGELOG="${CHANGELOG:0:$MAX_LENGTH}\n..."
+        fi
+
+        CHANGELOG_BASE64=$(echo "$CHANGELOG" | base64 -w 0)
+
+        {
+          echo "CHANGELOG_BASE64<<EOF"
+          echo "$CHANGELOG_BASE64"
+          echo "EOF"
+        } >> $GITHUB_ENV
+
+    - name: Trigger Infra Deployment
+      uses: benc-uk/workflow-dispatch@v1
+      with:
+        workflow: Autodeploy to Fargate
+        repo: Karlo-Andric/Vampires
+        token: ${{ secrets.PAT_TOKEN_VAMP }}
+        inputs: >
+          {
+            "service": "cms",
+            "version": "${{ github.event.release.tag_name }}",
+            "environment": "prod",
+            "changelog": "${{ env.CHANGELOG_BASE64 }}"
+          }
+        ref: refs/heads/basi-cms
