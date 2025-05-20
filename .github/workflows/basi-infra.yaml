@@ -51,6 +51,6 @@ jobs:
       - name: Discord Commits
         uses: Ilshidur/action-discord@0.3.2
         env:
-          DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         with:
           args: "${{ env.DISCORD_MESSAGE }}"
