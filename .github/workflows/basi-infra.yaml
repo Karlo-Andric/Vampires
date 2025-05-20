@@ -40,7 +40,7 @@ jobs:
           MESSAGE="${{ env.ENVIRONMENT_UPPERCASE }} ${{ env.SERVICE_UPPERCASE }} ${{ env.VERSION }} release done 🚀🚀🚀 - Check it out: <${{ env.SERVICE_URL }}>."
           if [ -n "${{ env.CHANGELOG }}" ]; then
             DECODED_CHANGELOG=$(echo "${{ env.CHANGELOG }}" | base64 -d | head -c 1600)
-            MESSAGE="$MESSAGE\n\`\`\`\n$DECODED_CHANGELOG\n\`\`\`"
+            MESSAGE="$MESSAGE\n\`\`\`$DECODED_CHANGELOG\`\`\`"
           fi
           {
             echo "DISCORD_MESSAGE<<EOF"
