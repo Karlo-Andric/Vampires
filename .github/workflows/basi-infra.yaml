@@ -1,0 +1,56 @@
+name: Autodeploy to Fargate
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Application type"
+        required: true
+      version:
+        description: "Docker image version"
+        required: true
+        default: "latest"
+      environment:
+        description: "Environment name"
+        required: true
+      changelog:
+        description: "Release notes"
+        required: false
+
+env:
+  SERVICE: ${{ github.event.inputs.service }}
+  VERSION: ${{ github.event.inputs.version }}
+  ENVIRONMENT: ${{ github.event.inputs.environment }}
+  SERVICE_UPPERCASE: ${{ github.event.inputs.service == 'fe' && 'frontend' || 'CMS' }}
+  ENVIRONMENT_UPPERCASE: ${{ github.event.inputs.environment == 'prod' && 'Production' || 'Staging' }}
+  CHANGELOG: ${{ github.event.inputs.changelog }}
+  SERVICE_URL: ""
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate Discord Message
+        run: |
+          MESSAGE="${{ env.ENVIRONMENT_UPPERCASE }} ${{ env.SERVICE_UPPERCASE }} ${{ env.VERSION }} release done 🚀🚀🚀 - Check it out: <${{ env.SERVICE_URL }}>."
+          if [ -n "${{ env.CHANGELOG }}" ]; then
+            TRIMMED_CHANGELOG=$(echo "${{ env.CHANGELOG }}" | head -c 1600)
+            MESSAGE="$MESSAGE\n\`\`\`\n$TRIMMED_CHANGELOG\n\`\`\`"
+          fi
+          {
+            echo "DISCORD_MESSAGE<<EOF"
+            echo "$MESSAGE"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Discord Commits
+        uses: Ilshidur/action-discord@0.3.2
+        env:
+          DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
+        with:
+          args: "${{ env.DISCORD_MESSAGE }}"
